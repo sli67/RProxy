@@ -20,6 +20,7 @@ type LoadBalancer struct {
 	proxies    []*httputil.ReverseProxy
 	proxyAddrs []string
 	health     []bool
+	cb         []*CircuitBreaker
 	counter    atomic.Uint64
 	mutex      sync.RWMutex
 	rl         *RateLimiter
@@ -32,13 +33,51 @@ type RateLimiter struct {
 	maxToken float64
 }
 
+type ProxyState int
+
+const (
+	Closed ProxyState = iota
+	Open
+	HalfOpen
+)
+
+type CircuitBreaker struct {
+	state     ProxyState
+	downCount int
+	openTime  time.Time
+}
+
 func NewLoadBalancer(addrs []string) *LoadBalancer {
 	var lb LoadBalancer
 	lb.rl = NewRateLimiter(5, 15)
-	for _, addr := range addrs {
+	for i, addr := range addrs {
+		i := i
 		target, _ := url.Parse(addr)
-		lb.proxies = append(lb.proxies, httputil.NewSingleHostReverseProxy(target))
+		tmpProxy := httputil.NewSingleHostReverseProxy(target)
+		tmpProxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			lb.mutex.Lock()
+			if lb.cb[i].state == HalfOpen {
+				lb.cb[i].state = Open
+			}
+			lb.cb[i].downCount += 1
+			if lb.cb[i].downCount >= 3 {
+				lb.cb[i].state = Open
+				lb.cb[i].openTime = time.Now()
+			}
+			lb.mutex.Unlock()
+		}
+		tmpProxy.ModifyResponse = func(res *http.Response) error {
+			lb.mutex.Lock()
+			if lb.cb[i].state == HalfOpen {
+				lb.cb[i].state = Closed
+				lb.cb[i].downCount = 0
+			}
+			lb.mutex.Unlock()
+			return nil
+		}
+		lb.proxies = append(lb.proxies, tmpProxy)
 		lb.health = append(lb.health, true)
+		lb.cb = append(lb.cb, &CircuitBreaker{state: Closed})
 	}
 	lb.proxyAddrs = addrs
 	return &lb
@@ -92,7 +131,24 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if tries == size {
 		http.Error(w, "No Backend Available", http.StatusServiceUnavailable)
 	} else {
-		lb.proxies[ind].ServeHTTP(w, r)
+		lb.mutex.RLock()
+		state := lb.cb[ind].state
+		openTime := lb.cb[ind].openTime
+		lb.mutex.RUnlock()
+		switch state {
+		case Closed, HalfOpen:
+			lb.proxies[ind].ServeHTTP(w, r)
+		case Open:
+			if time.Since(openTime).Seconds() >= 10 {
+				lb.mutex.Lock()
+				lb.cb[ind].state = HalfOpen
+				lb.mutex.Unlock()
+				lb.proxies[ind].ServeHTTP(w, r)
+			} else {
+				http.Error(w, "Backend Unavailable", http.StatusServiceUnavailable)
+			}
+		}
+
 	}
 }
 
