@@ -18,20 +18,20 @@ type Config struct {
 	Port              int      `yaml:"port"`
 	Backends          []string `yaml:"backends"`
 	Strategy          string   `yaml:"strategy"`
-	CheckAliveTimeout int      `yaml:"checkAliveTimeout`
+	CheckAliveTimeout int      `yaml:"checkAliveTimeout"`
 }
 
 func main() {
 	go http.ListenAndServe("0.0.0.0:9090", promhttp.Handler())
 	configFile, err := os.ReadFile("config.yaml")
 	if err != nil {
-		slog.Error("Could not read config file: ", err)
+		slog.Error("Could not read config file: ", "error", err)
 		return
 	}
 	var config Config
 	err = yaml.Unmarshal(configFile, &config)
 	if err != nil {
-		slog.Error("Could not load config file: ", err)
+		slog.Error("Could not load config file: ", "error", err)
 		return
 	}
 
@@ -47,7 +47,7 @@ func main() {
 		slog.Info("Reverse proxy starting on :" + strconv.Itoa(config.Port))
 		go lb.checkHealth()
 		if err := myServer.ListenAndServe(); err != http.ErrServerClosed {
-			slog.Error("Server Error: ", err)
+			slog.Error("Server Error: ", "error", err)
 		}
 	}()
 
@@ -58,7 +58,7 @@ func main() {
 	defer cancel()
 
 	if err := myServer.Shutdown(ctx); err != nil {
-		slog.Info("Forced shutdown:", err)
+		slog.Info("Forced shutdown:", "error", err)
 	}
 	slog.Info("Server stopped")
 }

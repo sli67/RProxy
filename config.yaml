@@ -3,3 +3,4 @@ backends:
   - "http://localhost:8000"
   - "http://localhost:8001"
 strategy: "P2C"
+checkAliveTimeout: 3

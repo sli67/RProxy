@@ -18,10 +18,26 @@ type RateLimiter struct {
 }
 
 func NewRateLimiter(rate float64, maxToken float64) *RateLimiter {
-	return &RateLimiter{
+	rl := &RateLimiter{
 		buckets:  make(map[string]*Bucket),
 		rate:     rate,
 		maxToken: maxToken,
+	}
+	go rl.cleanup()
+	return rl
+}
+
+func (rl *RateLimiter) cleanup() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		rl.mutex.Lock()
+		for ip, bucket := range rl.buckets {
+			if time.Since(bucket.refillTS) > 5*time.Minute {
+				delete(rl.buckets, ip)
+			}
+		}
+		rl.mutex.Unlock()
 	}
 }
 

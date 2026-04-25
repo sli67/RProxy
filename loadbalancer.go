@@ -11,21 +11,33 @@ import (
 )
 
 type LoadBalancer struct {
-	backends []*Backend
-	rl       *RateLimiter
-	strategy Strategy
+	backends          []*Backend
+	rl                *RateLimiter
+	strategy          Strategy
+	checkAliveTimeout time.Duration
 }
 
 func NewLoadBalancer(config Config) *LoadBalancer {
-	lb := &LoadBalancer{rl: NewRateLimiter(5, 15)}
+	timeout := time.Duration(config.CheckAliveTimeout) * time.Second
+	if timeout == 0 {
+		timeout = 3 * time.Second
+	}
+	lb := &LoadBalancer{rl: NewRateLimiter(5, 15), checkAliveTimeout: timeout}
 	for _, addr := range config.Backends {
-		lb.backends = append(lb.backends, NewBackend(addr))
+		b, err := NewBackend(addr)
+		if err != nil {
+			slog.Error("invalid backend address", "addr", addr, "err", err)
+			continue
+		}
+		lb.backends = append(lb.backends, b)
 	}
 	switch config.Strategy {
 	case "RR":
 		lb.strategy = &RoundRobin{}
 	case "P2C":
 		lb.strategy = &P2C{}
+	default:
+		lb.strategy = &RoundRobin{}
 	}
 	return lb
 }

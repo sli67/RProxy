@@ -58,8 +58,7 @@ func (b *Backend) onError() {
 	}
 }
 
-func (b *Backend) onSuccess(StatusCode int) {
-	requestCount.WithLabelValues(b.addr, strconv.Itoa(StatusCode)).Inc()
+func (b *Backend) onSuccess(_ int) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.cb.state == HalfOpen {
@@ -74,8 +73,11 @@ func (b *Backend) tryHalfOpen() {
 	b.cb.state = HalfOpen
 }
 
-func NewBackend(addr string) *Backend {
-	target, _ := url.Parse(addr)
+func NewBackend(addr string) (*Backend, error) {
+	target, err := url.Parse(addr)
+	if err != nil {
+		return nil, err
+	}
 	b := &Backend{
 		addr:  addr,
 		proxy: httputil.NewSingleHostReverseProxy(target),
@@ -86,8 +88,13 @@ func NewBackend(addr string) *Backend {
 		b.onError()
 	}
 	b.proxy.ModifyResponse = func(res *http.Response) error {
-		b.onSuccess(res.StatusCode)
+		requestCount.WithLabelValues(b.addr, strconv.Itoa(res.StatusCode)).Inc()
+		if res.StatusCode >= 500 {
+			b.onError()
+		} else {
+			b.onSuccess(res.StatusCode)
+		}
 		return nil
 	}
-	return b
+	return b, nil
 }

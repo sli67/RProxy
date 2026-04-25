@@ -18,6 +18,9 @@ type P2C struct {
 
 func (rr *RoundRobin) Pick(backends []*Backend) (*Backend, bool) {
 	size := uint64(len(backends))
+	if size == 0 {
+		return nil, false
+	}
 	start := rr.counter.Add(1) % size
 	for i := uint64(0); i < size; i++ {
 		ind := (start + i) % size
