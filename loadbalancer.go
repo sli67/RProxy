@@ -22,7 +22,15 @@ func NewLoadBalancer(config Config) *LoadBalancer {
 	if timeout == 0 {
 		timeout = 3 * time.Second
 	}
-	lb := &LoadBalancer{rl: NewRateLimiter(5, 15), checkAliveTimeout: timeout}
+	rlRate := config.RLRate
+	if rlRate == 0 {
+		rlRate = 5
+	}
+	rlMax := float64(config.RLMaxToken)
+	if rlMax == 0 {
+		rlMax = 15
+	}
+	lb := &LoadBalancer{rl: NewRateLimiter(rlRate, rlMax), checkAliveTimeout: timeout}
 	for _, addr := range config.Backends {
 		b, err := NewBackend(addr)
 		if err != nil {

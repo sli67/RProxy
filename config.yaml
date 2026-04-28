@@ -4,3 +4,6 @@ backends:
   - "http://localhost:8001"
 strategy: "P2C"
 checkAliveTimeout: 3
+PrometheusPort: 9090
+RLRate: 5
+RLMaxToken: 15

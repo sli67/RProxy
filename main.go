@@ -19,10 +19,12 @@ type Config struct {
 	Backends          []string `yaml:"backends"`
 	Strategy          string   `yaml:"strategy"`
 	CheckAliveTimeout int      `yaml:"checkAliveTimeout"`
+	RLRate            float64  `yaml:"RLRate"`
+	RLMaxToken        int      `yaml:"RLMaxToken"`
+	PrometheusPort    int      `yaml:"PrometheusPort"`
 }
 
 func main() {
-	go http.ListenAndServe("0.0.0.0:9090", promhttp.Handler())
 	configFile, err := os.ReadFile("config.yaml")
 	if err != nil {
 		slog.Error("Could not read config file: ", "error", err)
@@ -30,10 +32,13 @@ func main() {
 	}
 	var config Config
 	err = yaml.Unmarshal(configFile, &config)
+
 	if err != nil {
 		slog.Error("Could not load config file: ", "error", err)
 		return
 	}
+
+	go http.ListenAndServe("0.0.0.0:"+strconv.Itoa(config.PrometheusPort), promhttp.Handler())
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
