@@ -17,13 +17,14 @@ import (
 )
 
 type Config struct {
-	Port              int      `yaml:"port"`
-	Backends          []string `yaml:"backends"`
-	Strategy          string   `yaml:"strategy"`
-	CheckAliveTimeout int      `yaml:"checkAliveTimeout"`
-	RLRate            float64  `yaml:"RLRate"`
-	RLMaxToken        int      `yaml:"RLMaxToken"`
-	PrometheusPort    int      `yaml:"PrometheusPort"`
+	Port                int      `yaml:"port"`
+	Backends            []string `yaml:"backends"`
+	Strategy            string   `yaml:"strategy"`
+	CheckAliveTimeout   int      `yaml:"checkAliveTimeout"`
+	RLRate              float64  `yaml:"RLRate"`
+	RLMaxToken          int      `yaml:"RLMaxToken"`
+	PrometheusPort      int      `yaml:"PrometheusPort"`
+	CheckHealthInterval int      `yaml:"CheckHealthInterval"`
 }
 
 func main() {
@@ -39,6 +40,11 @@ func main() {
 	if err != nil {
 		slog.Error("Could not load config file: ", "error", err)
 		return
+	}
+
+	checkHealthInterval := config.CheckHealthInterval
+	if checkHealthInterval == 0 {
+		checkHealthInterval = 3
 	}
 
 	runtime.SetMutexProfileFraction(1)
@@ -57,7 +63,7 @@ func main() {
 
 	go func() {
 		slog.Info("Reverse proxy starting on :" + strconv.Itoa(config.Port))
-		go lb.checkHealth()
+		go lb.checkHealth(config.CheckHealthInterval)
 		if err := myServer.ListenAndServe(); err != http.ErrServerClosed {
 			slog.Error("Server Error: ", "error", err)
 		}

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func (lb *LoadBalancer) checkHealth() {
+func (lb *LoadBalancer) checkHealth(checkHealthInterval int) {
 	cl := http.Client{Timeout: lb.checkAliveTimeout}
 	for {
 		for _, b := range lb.backends {
@@ -27,6 +27,6 @@ func (lb *LoadBalancer) checkHealth() {
 				res.Body.Close()
 			}
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(time.Duration(checkHealthInterval) * time.Second)
 	}
 }

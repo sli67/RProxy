@@ -6,4 +6,5 @@ strategy: "P2C"
 checkAliveTimeout: 3
 PrometheusPort: 9090
 RLRate: 5
-RLMaxToken: 15
+RLMaxToken: 10000000
+CheckHealthInterval: 1
