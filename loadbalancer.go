@@ -61,10 +61,13 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	hostAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
 
-	//defer logging
+	//defer logging — only on errors to keep the hot path lock-free
 	start := time.Now()
 	var backendAddr string
 	defer func() {
+		if logw.status < 400 {
+			return
+		}
 		slog.Info("request",
 			"request_id", id,
 			"method", r.Method,

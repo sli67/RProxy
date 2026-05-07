@@ -78,9 +78,18 @@ func NewBackend(addr string) (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	proxy.Transport = &http.Transport{
+		MaxIdleConns:        1000,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+		DisableKeepAlives:   false,
+	}
 	b := &Backend{
 		addr:  addr,
-		proxy: httputil.NewSingleHostReverseProxy(target),
+		proxy: proxy,
 		cb:    CircuitBreaker{state: Closed},
 	}
 	b.healthy.Store(true)

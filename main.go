@@ -4,8 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -25,6 +27,7 @@ type Config struct {
 }
 
 func main() {
+
 	configFile, err := os.ReadFile("config.yaml")
 	if err != nil {
 		slog.Error("Could not read config file: ", "error", err)
@@ -38,7 +41,11 @@ func main() {
 		return
 	}
 
+	runtime.SetMutexProfileFraction(1)
+	runtime.SetBlockProfileRate(1)
+
 	go http.ListenAndServe("0.0.0.0:"+strconv.Itoa(config.PrometheusPort), promhttp.Handler())
+	go http.ListenAndServe("0.0.0.0:6060", nil)
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
