@@ -63,7 +63,7 @@ func main() {
 
 	go func() {
 		slog.Info("Reverse proxy starting on :" + strconv.Itoa(config.Port))
-		go lb.checkHealth(config.CheckHealthInterval)
+		go lb.checkHealth(checkHealthInterval)
 		if err := myServer.ListenAndServe(); err != http.ErrServerClosed {
 			slog.Error("Server Error: ", "error", err)
 		}

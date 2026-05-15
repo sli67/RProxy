@@ -23,7 +23,7 @@ func (lb *LoadBalancer) checkHealth(checkHealthInterval int) {
 				backendHealth.WithLabelValues(b.addr).Set(0)
 				b.onError()
 			}
-			if alive {
+			if res != nil {
 				res.Body.Close()
 			}
 		}
