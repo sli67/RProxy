@@ -33,6 +33,18 @@ type Backend struct {
 	inflight atomic.Int64
 }
 
+type BufferPool struct {
+	pool sync.Pool
+}
+
+func (bp *BufferPool) Get() []byte {
+	return *(bp.pool.Get().(*[]byte))
+}
+
+func (bp *BufferPool) Put(x []byte) {
+	bp.pool.Put(&x)
+}
+
 func (b *Backend) IsHealthy() bool { return b.healthy.Load() }
 
 func (b *Backend) SetHealthy(v bool) { b.healthy.Store(v) }
@@ -79,7 +91,14 @@ func NewBackend(addr string) (*Backend, error) {
 		return nil, err
 	}
 
+	var bp = &BufferPool{}
+	bp.pool = sync.Pool{New: func() any {
+		b := make([]byte, 32*1024)
+		return &b
+	}}
+
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.BufferPool = bp
 
 	proxy.Transport = &http.Transport{
 		MaxIdleConns:        1000,
