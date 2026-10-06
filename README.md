@@ -44,12 +44,12 @@ Per-IP buckets are refilled at `RLRate` tokens/second up to `RLMaxToken`. A back
 
 ## Benchmark
 
-Tested locally on Windows 11, 4 threads, 100 connections, 30s duration, 2 backends:
+Tested locally with wrk on WSL2 (Windows 11, Intel i7-14650HX), 4 threads, 100 connections, 30s duration, 2 backends returning an empty `200`. Median of 5 runs:
 
 | Setup                       | Req/s   | Avg Latency | p99 Latency |
 |-----------------------------|---------|-------------|-------------|
-| Direct to backend           | 241k    | 0.75ms      | 17ms        |
-| Through LB (P2C)            | 59.6k   | 2.11ms      | 26ms        |
+| Direct to backend           | 314k    | 0.62ms      | 4.2ms       |
+| Through LB (P2C)            | 80.9k   | 1.45ms      | 6.8ms       |
 
 *Rate limiter disabled during throughput testing.*
 

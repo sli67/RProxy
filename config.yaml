@@ -1,7 +1,7 @@
 port: 9000
 backends:
-  - "http://localhost:8000"
-  - "http://localhost:8001"
+  - "http://[::1]:8000"
+  - "http://[::1]:8001"
 strategy: "P2C"
 checkAliveTimeout: 3
 PrometheusPort: 9090
