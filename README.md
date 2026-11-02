@@ -53,6 +53,8 @@ Tested locally with wrk on WSL2 (Windows 11, Intel i7-14650HX), 4 threads, 100 c
 
 *Rate limiter disabled during throughput testing.*
 
+Adding a 32KB `sync.Pool` buffer pool to `httputil.ReverseProxy` (reused for copying response bodies) cut allocations from ~40KB to ~7.4KB per request and raised LB throughput ~2.2x (~37k → 80.9k req/s).
+
 ## Project Structure
 ```
 ├── main.go            # Entry point, config loading, graceful shutdown
